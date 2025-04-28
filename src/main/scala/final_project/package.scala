@@ -5,6 +5,7 @@ import org.apache.spark.SparkContext
 
 package object final_project {
   val projectName = "final_project"
+  val checkpointDir = System.getProperty("user.dir") + "/checkpoints"
   def createSparkSession(name: String): SparkSession = {
     SparkSession
       .builder()

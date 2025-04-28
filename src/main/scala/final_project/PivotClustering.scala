@@ -15,8 +15,6 @@ import org.apache.hadoop.fs.Path
 
 object PivotClustering {
 
-  val checkpointDir = System.getProperty("user.dir") + "/checkpoints"
-
   /**
    * Performs the PIVOT algorithm on g.
    * This assumes vertices are labeled starting with 1, with no skipped numbers
@@ -120,13 +118,6 @@ object PivotClustering {
 
     val timeAfterPivot = System.currentTimeMillis()
     println("PIVOT completed in " + durationSeconds(timeBefore, timeAfterPivot) + " s.")
-
-    // Clear all checkpoints
-    val fs = FileSystem.get(sc.hadoopConfiguration)
-    val status = fs.listStatus(new Path(checkpointDir))
-    status.foreach(dir => {
-        fs.delete(dir.getPath())
-    })
 
     return joinedClusters
   }

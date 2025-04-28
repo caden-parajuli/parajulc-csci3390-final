@@ -12,6 +12,8 @@ import _root_.final_project.final_project.createSparkSession
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.io.File
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 
 object FileIO {
   private val spark = createSparkSession("final_project")
@@ -45,6 +47,14 @@ object FileIO {
     )
     bw.write(str)
     bw.close()
+  }
+
+  def clearCheckpoints(checkDir: String) = {
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    val status = fs.listStatus(new Path(checkDir))
+    status.foreach(dir => {
+        fs.delete(dir.getPath())
+    })
   }
 
 }
