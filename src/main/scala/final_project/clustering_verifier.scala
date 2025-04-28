@@ -18,7 +18,7 @@ object clustering_verifier {
     sc.setLogLevel("ERROR")
 
     if (args.length != 2) {
-      println("Usage: verifier graph_path matching_path")
+      println("Usage: verifier graph_path clustering_path")
       sys.exit(1)
     }
 
@@ -31,7 +31,7 @@ object clustering_verifier {
         Edge(x(1).toLong, x(0).toLong, 1)
     }
 
-    case class VertexData(data1: Long, data2: Long)
+    // case class VertexData(data1: Long, data2: Long)
 
     val graph_edges = sc.textFile(args(0)).map(line_to_canonical_edge)
 

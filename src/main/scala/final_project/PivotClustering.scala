@@ -6,31 +6,41 @@ import scala.util.Random
 import org.apache.spark.SparkContext
 import _root_.final_project.final_project._
 import org.apache.spark.graphx.EdgeContext
+import org.apache.spark.rdd.PairRDDFunctions
+import org.apache.spark.scheduler.SparkListener
+import org.apache.spark.scheduler.SparkListenerJobEnd
+import org.apache.hadoop.fs.FileSystem
+import org.apache.hadoop.fs.Path
 
-// TODO test with seed 1745304310713, figure out why it locks
 
 object PivotClustering {
+
+  val checkpointDir = System.getProperty("user.dir") + "/checkpoints"
+
   /**
    * Performs the PIVOT algorithm on g.
    * This assumes vertices are labeled starting with 1, with no skipped numbers
    */
-  def pivot(g: Graph[Long, Long], seed: Long) = {
-    println("Seed: " + seed)
+  def pivot(g: Graph[Long, Long], seed: Long): VertexRDD[(Long, Long)] = {
+    println("\nSeed: " + seed)
     val spark = createSparkSession(projectName)
     val sc = spark.sparkContext
 
-    // We'll need this at the end, so cache it now
-    g.cache()
+    sc.setCheckpointDir(checkpointDir)
+
+    // Remove self-edges
+    val g_no_self = g.subgraph(triplet => triplet.srcId != triplet.dstId)
 
     // Permute vertices
-    val timeBeforePerm = System.currentTimeMillis()
-    val g_perm = permute(sc, g, seed)
+    val timeBefore = System.currentTimeMillis()
+    val g_perm = permute(sc, g_no_self, seed)
     val timeAfterPerm = System.currentTimeMillis()
-    println("Permutation completed in " + durationSeconds(timeBeforePerm, timeAfterPerm) + " s.")
+    println("Permutation completed in " + durationSeconds(timeBefore, timeAfterPerm) + " s.")
 
     // Main PIVOT loop
-    var clustered_vertices = g.vertices
-    var g_curr = g_perm //.cache()
+    var clustered_vertices = g_no_self.vertices
+    var g_curr = g_perm
+    var roundNum = 1
     while (g_curr.numVertices > 0) {
       println(g_curr.numVertices + " vertices left")
 
@@ -97,36 +107,46 @@ object PivotClustering {
           x => true,
           (v, d) => d == 0
         )
-      )
+      ).cache()
 
-      // g_pivots.unpersistVertices()
+      // clustered_vertices does not have g_curr as an ancestor so we can checkpoint it first
+      clustered_vertices = clustered_vertices.localCheckpoint()
+      // GraphX does not support localCheckpoint, there is a stale PR for it at https://github.com/apache/spark/pull/13379
+      g_curr.checkpoint()
     }
 
-    spark.createDataFrame(clustered_vertices).show()
-    // clustered_vertices.collect().foreach(println)
+    // Join with the original vertex IDs
+    val joinedClusters = g.vertices.innerZipJoin(clustered_vertices){ case (id, vval, cluster) => (id, cluster) }
+
+    val timeAfterPivot = System.currentTimeMillis()
+    println("PIVOT completed in " + durationSeconds(timeBefore, timeAfterPivot) + " s.")
+
+    // Clear all checkpoints
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    val status = fs.listStatus(new Path(checkpointDir))
+    status.foreach(dir => {
+        fs.delete(dir.getPath())
+    })
+
+    return joinedClusters
   }
 
   def permute(sc: SparkContext, g: Graph[Long, Long], seed: Long): Graph[Long, Long] = {
-    print("Beginning permutation...")
+    println("Beginning permutation...")
     val rand: Random = new Random(seed)
     val num_vertices = g.numVertices
-
-    // // Note that we include 0 since the first vertex label is 1, so we want to have the indices offset by 1
-    // // This means a vertex will probably get a value of 0, but this does not affect the ordering
-    // val permutation = rand.shuffle(0L to num_vertices toSeq)
 
     val vertices = g.vertices
     val permutation = sc.parallelize(
       rand.shuffle(1L to num_vertices toSeq),
       numSlices = vertices.getNumPartitions)
-    // TODO: Alternative (test efficiency):
-    // val permutation = sc.parallelize(0L to num_vertices)
-    // permutation.sortBy((_) => rand.nextInt)
 
+
+    val keyedVertices = vertices.zipWithIndex.map{ case (v, i) => i -> v }
+    val keyedPerm = permutation.zipWithIndex.map{ case (v, i) => i -> v }
     val vertexPermutation = VertexRDD(
-      vertices
-        .zip(permutation)
-        .map({case ((id, label), perm) => (id, perm) }))
+      new PairRDDFunctions(keyedVertices).join(keyedPerm).map({ case (i, v) => (v._1._1, v._2) })
+    )
 
     return g.joinVertices(vertexPermutation)((id, label, perm) => perm)
     // g.mapVertices((id, label: Long) => permutation(label))

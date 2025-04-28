@@ -9,10 +9,13 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.graphx._
 import org.apache.spark.storage.StorageLevel
 import _root_.final_project.final_project.createSparkSession
+import java.io.BufferedWriter
+import java.io.FileWriter
+import java.io.File
 
 object FileIO {
-  val spark = createSparkSession("final_project")
-  val sc = spark.sparkContext
+  private val spark = createSparkSession("final_project")
+  private val sc = spark.sparkContext
 
   def lineToCanonicalEdge(line: String): Edge[Long] = {
     val x = line.split(",");
@@ -28,8 +31,20 @@ object FileIO {
     Graph.fromEdges[Long, Long](graph_edges, 0)
   }
 
-  def writeClustering(clusterings: VertexRDD[(Long, Long)], filename: String) = {
-    spark.createDataFrame(clusterings).coalesce(1).write.format("csv").mode(SaveMode.Overwrite).save(filename)
+  def writeClustering(clusterings: RDD[(Long, Long)], filename: String) = {
+    println("Writing clustering to " + filename)
+    clusterings.map({ case (vertex, cluster) => vertex + "," + cluster }).coalesce(1).saveAsTextFile(filename)
+    // val frame = spark.createDataFrame(clusterings)
+    // frame.coalesce(1).write.format("csv").mode(SaveMode.Overwrite).save(filename)
+    // frame.show()
+  }
+
+  def appendToFile(str: String, path: String) = {
+    val bw = new BufferedWriter(
+      new FileWriter(new File(path), true)
+    )
+    bw.write(str)
+    bw.close()
   }
 
 }
