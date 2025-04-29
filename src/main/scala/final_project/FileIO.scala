@@ -48,13 +48,4 @@ object FileIO {
     bw.write(str)
     bw.close()
   }
-
-  def clearCheckpoints(checkDir: String) = {
-    val fs = FileSystem.get(sc.hadoopConfiguration)
-    val status = fs.listStatus(new Path(checkDir))
-    status.foreach(dir => {
-        fs.delete(dir.getPath())
-    })
-  }
-
 }

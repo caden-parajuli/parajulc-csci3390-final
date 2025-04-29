@@ -24,8 +24,6 @@ object PivotClustering {
     val spark = createSparkSession(projectName)
     val sc = spark.sparkContext
 
-    sc.setCheckpointDir(checkpointDir)
-
     // Remove self-edges
     val g_no_self = g.subgraph(triplet => triplet.srcId != triplet.dstId)
 
@@ -109,8 +107,8 @@ object PivotClustering {
 
       // clustered_vertices does not have g_curr as an ancestor so we can checkpoint it first
       clustered_vertices = clustered_vertices.localCheckpoint()
-      // GraphX does not support localCheckpoint, there is a stale PR for it at https://github.com/apache/spark/pull/13379
-      g_curr.checkpoint()
+      // This is what we needed to fork Spark for:
+      g_curr = g_curr.localCheckpoint()
     }
 
     // Join with the original vertex IDs

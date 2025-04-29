@@ -6,8 +6,6 @@ import _root_.final_project.final_project.createSparkSession
 import org.apache.hadoop.fs.Path
 import scala.util.Random
 import _root_.final_project.FileIO.appendToFile
-import _root_.final_project.FileIO.clearCheckpoints
-import _root_.final_project.final_project.checkpointDir
 
 object main {
   val rootLogger = Logger.getRootLogger()
@@ -49,8 +47,6 @@ object main {
         val g = FileIO.readInput(inputPath)
         val clustering = PivotClustering.pivot(g, seed)
         FileIO.writeClustering(clustering.values, outputPath)
-
-        clearCheckpoints(checkpointDir)
       }
 
       case "findPivotSeeds" => {
@@ -78,8 +74,6 @@ object main {
 
           val output = seed + ":" + disagreements + "\n"
           appendToFile(output, outputPath)
-
-          clearCheckpoints(checkpointDir)
 
           // Note that we don't need the seeds to be random, just different from each other.
           // The pseudo-randomness inside pivot is enough as long as the seeds are distinct
