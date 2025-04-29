@@ -20,7 +20,6 @@
           buildInputs = [
             spark
             sbt
-            maven
           ];
           LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
         };

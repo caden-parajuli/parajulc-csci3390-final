@@ -1,9 +1,8 @@
 .direnv/
 target/
 .bloop/
-.bsp/
 .metals/
 data/
 output/
-project/
 checkpoints/
+.bsp/
