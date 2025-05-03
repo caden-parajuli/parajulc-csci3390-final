@@ -49,11 +49,26 @@ object FileIO {
     bw.close()
   }
 
-  def clearCheckpoints(checkDir: String) = {
+  def clearAllCheckpoints(checkDir: String) = {
     val fs = FileSystem.get(sc.hadoopConfiguration)
     val status = fs.listStatus(new Path(checkDir))
     status.foreach(dir => {
         fs.delete(dir.getPath())
+    })
+  }
+
+  /**
+   * Clears all checkpoint folders except the specified one. Used to prevent Spark race conditions
+   *
+   * @param checkDir
+   */
+  def clearCheckpointsExcept(checkDir: String, keptDir: String) = {
+    val fs = FileSystem.get(sc.hadoopConfiguration)
+    val status = fs.listStatus(new Path(checkDir))
+    status.foreach(dir => {
+        if (dir.getPath().getName() != new Path(keptDir).getName()) {
+          fs.delete(dir.getPath())
+        }
     })
   }
 

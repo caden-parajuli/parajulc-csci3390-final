@@ -14,6 +14,10 @@ package object final_project {
   }
 
   def durationSeconds(startMillis: Long, endMillis: Long): Double = {
-    return (endMillis - startMillis) / 1000
+    return (endMillis - startMillis).toDouble / 1000.0D
+  }
+
+  def nanoToSeconds(startNano: Long, endNano: Long): Double = {
+    return (endNano - startNano).toDouble / 1000000000.0D
   }
 }

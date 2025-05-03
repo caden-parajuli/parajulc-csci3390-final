@@ -38,6 +38,7 @@ object VerifyClustering {
   }
 
   def numDisagreements(g: Graph[Long, Long], clustering: VertexRDD[(Long, Long)]): Long = {
+    println("Computing disagreements...")
     val clusters = clustering.values
     val original_vertices = g.vertices.keys
 

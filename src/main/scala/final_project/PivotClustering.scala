@@ -18,8 +18,9 @@ object PivotClustering {
   /**
    * Performs the PIVOT algorithm on g.
    * This assumes vertices are labeled starting with 1, with no skipped numbers
+   * Returns the clustering, and the checkpoint directory used by the clustering
    */
-  def pivot(g: Graph[Long, Long], seed: Long): VertexRDD[(Long, Long)] = {
+  def pivot(g: Graph[Long, Long], seed: Long): (VertexRDD[(Long, Long)], String) = {
     println("\nSeed: " + seed)
     val spark = createSparkSession(projectName)
     val sc = spark.sparkContext
@@ -30,10 +31,10 @@ object PivotClustering {
     val g_no_self = g.subgraph(triplet => triplet.srcId != triplet.dstId)
 
     // Permute vertices
-    val timeBefore = System.currentTimeMillis()
+    val timeBefore = System.nanoTime()
     val g_perm = permute(sc, g_no_self, seed)
-    val timeAfterPerm = System.currentTimeMillis()
-    println("Permutation completed in " + durationSeconds(timeBefore, timeAfterPerm) + " s.")
+    val timeAfterPerm = System.nanoTime()
+    printf("Permutation completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPerm))
 
     // Main PIVOT loop
     var clustered_vertices = g_no_self.vertices
@@ -116,10 +117,10 @@ object PivotClustering {
     // Join with the original vertex IDs
     val joinedClusters = g.vertices.innerZipJoin(clustered_vertices){ case (id, vval, cluster) => (id, cluster) }
 
-    val timeAfterPivot = System.currentTimeMillis()
-    println("PIVOT completed in " + durationSeconds(timeBefore, timeAfterPivot) + " s.")
+    val timeAfterPivot = System.nanoTime()
+    printf("PIVOT completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPivot))
 
-    return joinedClusters
+    return (joinedClusters, sc.getCheckpointDir.getOrElse(""))
   }
 
   def permute(sc: SparkContext, g: Graph[Long, Long], seed: Long): Graph[Long, Long] = {
@@ -140,6 +141,5 @@ object PivotClustering {
     )
 
     return g.joinVertices(vertexPermutation)((id, label, perm) => perm)
-    // g.mapVertices((id, label: Long) => permutation(label))
   }
 }
