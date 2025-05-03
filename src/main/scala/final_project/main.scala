@@ -10,6 +10,8 @@ import _root_.final_project.FileIO.clearCheckpointsExcept
 import _root_.final_project.FileIO.clearAllCheckpoints
 import _root_.final_project.final_project.checkpointDir
 import _root_.final_project.final_project.nanoToSeconds
+import scala.collection.mutable.MutableList
+import java.util.ArrayList
 
 object main {
   val rootLogger = Logger.getRootLogger()
@@ -76,6 +78,7 @@ object main {
         val g = FileIO.readInput(inputPath)
 
         var seed = Random.nextInt(Int.MaxValue)
+        var checkpoints: List[String] = Nil
         var trial = 0
         val timeBeforeStart = System.nanoTime()
         while (trial < numTrials) {
@@ -91,7 +94,11 @@ object main {
           val output = seed + ":" + disagreements + "\n"
           appendToFile(output, outputPath)
 
-          clearCheckpointsExcept(checkpointDir, lastCheckDir)
+          checkpoints = checkpointDir :: checkpoints
+          if (checkpoints.length > 1) {
+            clearCheckpointsExcept(checkpointDir, lastCheckDir)
+            checkpoints = lastCheckDir :: Nil
+          }
 
           // Note that we don't need the seeds to be random, just different from each other.
           // The pseudo-randomness inside pivot is enough as long as the seeds are distinct
