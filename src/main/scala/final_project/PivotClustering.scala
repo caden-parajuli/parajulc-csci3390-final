@@ -39,7 +39,6 @@ object PivotClustering {
     printf("Permutation completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPerm))
 
     // Main PIVOT loop
-    // var clustered_vertices = g_no_self.vertices
     var g_curr = g_perm
     var clusters = sc.emptyRDD[(Long, Long)]
     while (g_curr.numVertices > 0) {
@@ -50,6 +49,7 @@ object PivotClustering {
       clusters = clusters.union(iter._2)
 
       clusters.localCheckpoint()
+      // GraphX does not support localCheckpoint, there is a stale PR for it at https://github.com/apache/spark/pull/13379
       g_curr.checkpoint()
     }
 
@@ -83,7 +83,7 @@ object PivotClustering {
           // If it has no neighbors, it's a pivot
           case None => (oldAttr, true)
         }
-      } //.cache()
+      }.cache()
 
       // Send messages from pivots
       val pivotMessages = g_pivots.aggregateMessages[Long](
@@ -114,14 +114,6 @@ object PivotClustering {
 
       // Add these to the final RDD
       val just_clustered_vertices = g_clustered.vertices.filter(vert => vert._2 != 0)
-      // val clustered_vertices = clustered_vertices.leftJoin(just_clustered_vertices) { (id, vertex, clusterOpt) => 
-      //   clusterOpt match {
-      //     // Leave vertices unchanged if we didn't get data for them
-      //     case None => vertex
-      //     // TODO think about if we really need to check for 0
-      //     case Some(cluster) => if (cluster != 0) cluster else vertex
-      //   }
-      // }
 
       // Restrict to the unclustered vertices
       val new_g = g_curr.mask(
@@ -131,10 +123,6 @@ object PivotClustering {
         )
       ).cache()
 
-      // clustered_vertices does not have g_curr as an ancestor so we can checkpoint it first
-      // clustered_vertices = clustered_vertices.localCheckpoint()
-      // GraphX does not support localCheckpoint, there is a stale PR for it at https://github.com/apache/spark/pull/13379
-      // g_curr.checkpoint()
       return (new_g, just_clustered_vertices)
   }
 

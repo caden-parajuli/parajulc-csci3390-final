@@ -18,9 +18,8 @@ object VerifyClustering {
       Edge(x(1).toLong, x(0).toLong, 1)
   }
 
-  def verifyClustering(g: Graph[Long, Long], clustering: VertexRDD[(Long, Long)]) {
+  def verifyClustering(g: Graph[Long, Long], clusters: RDD[(Long, Long)]) {
     // Convert to plain RDD
-    val clusters = clustering.values
     if (clusters.keys.distinct.count != clusters.count) {
       println("A vertex ID showed up more than once in the solution file.")
       sys.exit(1)
@@ -34,12 +33,11 @@ object VerifyClustering {
       println("The set of vertices in the solution file does not match that of the input file.")
     }
     
-    println("The clustering has a disagreement of: " + numDisagreements(g, clustering))
+    println("The clustering has a disagreement of: " + numDisagreements(g, clusters))
   }
 
-  def numDisagreements(g: Graph[Long, Long], clustering: VertexRDD[(Long, Long)]): Long = {
+  def numDisagreements(g: Graph[Long, Long], clusters: RDD[(Long, Long)]): Long = {
     println("Computing disagreements...")
-    val clusters = clustering.values
     val original_vertices = g.vertices.keys
 
     val clusters2 = clusters.map(x => (x._2, x._1))

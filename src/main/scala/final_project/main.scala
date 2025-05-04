@@ -12,6 +12,7 @@ import _root_.final_project.final_project.checkpointDir
 import _root_.final_project.final_project.nanoToSeconds
 import scala.collection.mutable.MutableList
 import java.util.ArrayList
+import _root_.final_project.VerifyClustering.verifyClustering
 
 object main {
   val rootLogger = Logger.getRootLogger()
@@ -24,7 +25,7 @@ object main {
 
   def main(args: Array[String]): Unit = {
     if (args.length == 0) {
-      println("Usage: final_project option = {pivot, verifyPivot}")
+      println("Usage: final_project option = {pivot, verifyClustering, findPivotSeeds}")
       sys.exit(1)
     }
 
@@ -85,7 +86,7 @@ object main {
           val (clustering, lastCheckDir) = PivotClustering.pivot(g, seed)
 
           val timeBeforeDisagreements = System.nanoTime()
-          val disagreements = VerifyClustering.numDisagreements(g, clustering)
+          val disagreements = VerifyClustering.numDisagreements(g, clustering.values)
           println("Disagreements: " + disagreements)
           val timeAfterDisagreements = System.nanoTime()
           printf("Disagreements computed in %.2f s.\n", nanoToSeconds(timeBeforeDisagreements, timeAfterDisagreements))
@@ -108,8 +109,27 @@ object main {
 
       }
 
+      case "verifyClustering" => {
+        if (args.length < 3 || args.length > 4) {
+          println("Usage: final_project verifyClustering graph_path clustering_path")
+          sys.exit(1)
+        }
+        val sc = createSparkSession("final_project").sparkContext
+
+        val graphPath = args(1)
+        val clusterPath = args(2)
+
+        val g = FileIO.readInput(graphPath)
+        val clusters = sc
+          .textFile(clusterPath)
+          .map(line => line.split(","))
+          .map(parts => (parts(0).toLong, parts(1).toLong))
+
+        verifyClustering(g, clusters)
+      }
+
       case _ => {
-        println("Usage: final_project option = {pivot, verifyPivot, findPivotSeeds}")
+        println("Usage: final_project option = {pivot, verifyClustering, findPivotSeeds}")
         sys.exit(1)
       }
     }
