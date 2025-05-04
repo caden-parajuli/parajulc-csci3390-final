@@ -39,7 +39,13 @@ $$
 
 ### Heuristics
 
-We can do better with heuristics to get an idea of how *good* our approximation might actually be. One way we can do this is by looking at not just our bet PIVOT result, but using all of them to compute a mean. Since PIVOT produces at least a 3-approximation in expectation, we can use the mean to get an approximate upper bound on the optimal number of disagreements, and we can judge our best solution based on this, computing an estimated maximum approximation ratio (EMAR). More formally, if our best PIVOT solution is $D^*$ and the mean disagreements across all PIVOT trials is $D_{\mu}$, we define $EMAR(D^*, D_{\mu}) = \frac{3 D^*}{D_{\mu}}$, an estimated upper bound on our approximation ratio. If our graph is not adversarial and is such that PIVOT does better than a 3-approximation in expectation, our actual approximation ratio could be much better than this. The EMAR for PIVOT results is included in the results section below. Note that the EMAR is significantly better for the more dense datasets.
+We can do better with heuristics to get an idea of how *good* our approximation might actually be. One way we can do this is by looking at not just our bet PIVOT result, but using all of them to compute a mean. Since PIVOT produces at least a 3-approximation in expectation, we can use the mean to get an approximate upper bound on the optimal number of disagreements, and we can judge our best solution based on this, computing an estimated maximum approximation ratio (EMAR). More formally, if our best PIVOT solution is $D^\*$ and the mean disagreements across all PIVOT trials is $\mu_D$, we define 
+
+$$
+  \mathrm{EMAR}(D^\*, \mu_D) = \frac{3 D^\*}{\mu_D}
+$$
+
+an estimated upper bound on our approximation ratio. If our graph is not adversarial and is such that PIVOT does better than a 3-approximation in expectation, our actual approximation ratio could be much better than this. The EMAR for PIVOT results is included in the results section below. Note that the EMAR is significantly better for the more dense datasets.
 
 
 ## Results
