@@ -45,7 +45,7 @@ $$
   \mathrm{EMAR}(D^\*, \mu_D) = \frac{3 D^\*}{\mu_D}
 $$
 
-an estimated upper bound on our approximation ratio. If our graph is not adversarial and is such that PIVOT does better than a 3-approximation in expectation, our actual approximation ratio could be much better than this. The EMAR for PIVOT results is included in the results section below. Note that the EMAR is significantly better for the more dense datasets.
+an estimated upper bound on our approximation ratio. If our graph is not adversarial and is such that PIVOT does better than a 3-approximation in expectation, our actual approximation ratio could be much better than this. The EMAR for PIVOT results is included in the results section below.
 
 
 ## Results
@@ -54,12 +54,13 @@ The PIVOT results are summarized in the table below. Note that the total elapsed
 
 |       Dataset               | Disagreements |      Seed     | PIVOT trials | Total elapsed time (s) | Average disagreements | EMAR  |
 | --------------------------- | ------------- | ------------  | ------------ | ---------------------- | --------------------- | ----- |
-| log_normal_100.csv          |       1980    |     566607675 |    1589      |         1478.34        |           2282        | 2.603 |
+| log_normal_100.csv          |       1978    |    1052218575 |    5783      |         5373.61        |           2282        | 2.600 |
 | musae_ENGB_edges.csv        |      37770    |    1608026579 |     697      |         1078.53        |          45224        | 2.506 |
 | soc-pokec-relationships.csv |   29667967    |     431896136 |     400      |        24465.32        |       30124075        | 2.955 |
 | soc-LiveJournal1.csv        |   50667243    |    2125632257 |      31      |         4203.13        |       51733854        | 2.938 |
 | twitter_original_edges.csv  |   72389925    |    1495037540 |      50      |         9030.91        |       77308284        | 2.809 |
 | com-orkut.ungraph.csv       |  158394897    | 1746383182796 |       3      |         6161.24        |      159056244        | 2.988 |
+
 
 All of these results were obtained on a local machine with the following specifications:
 
@@ -70,6 +71,8 @@ All of these results were obtained on a local machine with the following specifi
   - Storage: 256 GB SATA SSD
   - Operating System: NixOS 25.05 (Linux kernel 6.12.21)
 
-However, due to the higher memory requirements of the `com-orkut.ungraph.csv` dataset especially when computing the number of disagreements, this was run using only 16 cores to decrease data duplication. Alternatively a cluster consisting of multiple devices with a larger total memory pool could be used. 
+The clustering results can be found here: [https://drive.google.com/file/d/19ua_j1y8K43LWzHKkhHuv9w6VIECUVqK/view](https://drive.google.com/file/d/19ua_j1y8K43LWzHKkhHuv9w6VIECUVqK/view)
 
-The clustering results can be found here: [https://drive.google.com/file/d/1ESWyI0_gT0YSvEqumjk49r1WDvBEWtbv/view?usp=sharing](https://drive.google.com/file/d/1ESWyI0_gT0YSvEqumjk49r1WDvBEWtbv/view?usp=sharing)
+## Scalability
+
+The approach used in this project is extremely scalable. The PIVOT algorithm scales very well (polylogarithmically in `n`), using linear memory, and the implementation here is inherently parallel. The multiple PIVOT implementations could in principal be performed in separate threads or on different machines, but in my own testing I found that for larger graphs it is better to use the most available parallelism for the individual PIVOT trials, rather than for multiple parallel PIVOT trials. I believe this is mainly due to the fact that memory is the main bottleneck with larger graphs. Thus using more machines with a larger memory pool allows significantly larger graphs to be processed, and allows more PIVOT trials to be run, obtaining better results.
