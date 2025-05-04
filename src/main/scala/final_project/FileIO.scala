@@ -35,7 +35,7 @@ object FileIO {
 
   def writeClustering(clusterings: RDD[(Long, Long)], filename: String) = {
     println("Writing clustering to " + filename)
-    clusterings.map({ case (vertex, cluster) => vertex + "," + cluster }).coalesce(1).saveAsTextFile(filename)
+    clusterings.map({ case (vertex, cluster) => vertex + "," + cluster }).saveAsTextFile(filename)
     // val frame = spark.createDataFrame(clusterings)
     // frame.coalesce(1).write.format("csv").mode(SaveMode.Overwrite).save(filename)
     // frame.show()

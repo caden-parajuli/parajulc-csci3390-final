@@ -11,6 +11,8 @@ import org.apache.spark.scheduler.SparkListener
 import org.apache.spark.scheduler.SparkListenerJobEnd
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.spark.graphx.TripletFields
+import org.apache.spark.rdd.RDD
 
 
 object PivotClustering {
@@ -37,12 +39,31 @@ object PivotClustering {
     printf("Permutation completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPerm))
 
     // Main PIVOT loop
-    var clustered_vertices = g_no_self.vertices
+    // var clustered_vertices = g_no_self.vertices
     var g_curr = g_perm
-    var roundNum = 1
+    var clusters = sc.emptyRDD[(Long, Long)]
     while (g_curr.numVertices > 0) {
       println(g_curr.numVertices + " vertices left")
+      val iter = pivot_iteration(g_curr)
 
+      g_curr = iter._1
+      clusters = clusters.union(iter._2)
+
+      clusters.localCheckpoint()
+      g_curr.checkpoint()
+    }
+
+    println("Joining clusters")
+    // Join with the original vertex IDs
+    val joinedClusters = g.vertices.innerJoin(clusters){ case (id, vval, cluster) => (id, cluster) }
+
+    val timeAfterPivot = System.nanoTime()
+    printf("PIVOT completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPivot))
+
+    return (joinedClusters, sc.getCheckpointDir.getOrElse(""))
+  }
+
+  def pivot_iteration(g_curr: Graph[Long, Long]): (Graph[Long, Long], VertexRDD[Long]) = {
       // Determine pivots
       val pivots = g_curr.aggregateMessages[Boolean](
         // Sends true to the smaller vertex
@@ -51,7 +72,8 @@ object PivotClustering {
           triplet.sendToDst(srcGreater)
           triplet.sendToSrc(!srcGreater)
         },
-        _&&_
+        _&&_,
+        new TripletFields(true, true, false)
       )
 
       // Join vertices with the pivots
@@ -77,7 +99,8 @@ object PivotClustering {
             triplet.sendToSrc(triplet.dstAttr._1)
           }
         },
-        (a, b) => if (a <= b) a else b
+        (a, b) => if (a <= b) a else b,
+        new TripletFields(true, true, false)
       )
 
       // Cluster according to pivot messages. Unclustered vertices are assigned 0, everything else is assigned a cluster
@@ -91,17 +114,17 @@ object PivotClustering {
 
       // Add these to the final RDD
       val just_clustered_vertices = g_clustered.vertices.filter(vert => vert._2 != 0)
-      clustered_vertices = clustered_vertices.leftJoin(just_clustered_vertices) { (id, vertex, clusterOpt) => 
-        clusterOpt match {
-          // Leave vertices unchanged if we didn't get data for them
-          case None => vertex
-          // TODO think about if we really need to check for 0
-          case Some(cluster) => if (cluster != 0) cluster else vertex
-        }
-      }
+      // val clustered_vertices = clustered_vertices.leftJoin(just_clustered_vertices) { (id, vertex, clusterOpt) => 
+      //   clusterOpt match {
+      //     // Leave vertices unchanged if we didn't get data for them
+      //     case None => vertex
+      //     // TODO think about if we really need to check for 0
+      //     case Some(cluster) => if (cluster != 0) cluster else vertex
+      //   }
+      // }
 
       // Restrict to the unclustered vertices
-      g_curr = g_curr.mask(
+      val new_g = g_curr.mask(
         g_clustered.subgraph(
           x => true,
           (v, d) => d == 0
@@ -109,18 +132,10 @@ object PivotClustering {
       ).cache()
 
       // clustered_vertices does not have g_curr as an ancestor so we can checkpoint it first
-      clustered_vertices = clustered_vertices.localCheckpoint()
+      // clustered_vertices = clustered_vertices.localCheckpoint()
       // GraphX does not support localCheckpoint, there is a stale PR for it at https://github.com/apache/spark/pull/13379
-      g_curr.checkpoint()
-    }
-
-    // Join with the original vertex IDs
-    val joinedClusters = g.vertices.innerZipJoin(clustered_vertices){ case (id, vval, cluster) => (id, cluster) }
-
-    val timeAfterPivot = System.nanoTime()
-    printf("PIVOT completed in %.2f s.\n", nanoToSeconds(timeBefore, timeAfterPivot))
-
-    return (joinedClusters, sc.getCheckpointDir.getOrElse(""))
+      // g_curr.checkpoint()
+      return (new_g, just_clustered_vertices)
   }
 
   def permute(sc: SparkContext, g: Graph[Long, Long], seed: Long): Graph[Long, Long] = {
