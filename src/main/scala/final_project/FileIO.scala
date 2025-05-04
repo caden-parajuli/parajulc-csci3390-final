@@ -30,7 +30,7 @@ object FileIO {
 
   def readInput(filename: String): Graph[Long, Long] = {
     val graph_edges = sc.textFile(filename).map(lineToCanonicalEdge)
-    Graph.fromEdges[Long, Long](graph_edges, 0)
+    Graph.fromEdges[Long, Long](graph_edges, 0, edgeStorageLevel = StorageLevel.MEMORY_AND_DISK, vertexStorageLevel = StorageLevel.MEMORY_AND_DISK)
   }
 
   def writeClustering(clusterings: RDD[(Long, Long)], filename: String) = {
